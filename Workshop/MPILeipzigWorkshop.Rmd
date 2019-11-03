@@ -1,0 +1,59 @@
+---
+title: "Project planning: From experiment design to manuscript and data release"
+author: "Shravan Vasishth (vasishth.1@osu.edu)"
+date: '```r format(Sys.Date(), "%B %d, %Y")```'
+output:
+  beamer_presentation:
+    theme: "Boadilla"
+    colortheme: "dove"
+    fonttheme: "structurebold"    
+    includes:
+      in_header: preamble.tex    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Motivation
+
+## Important problems in science today
+
+Results from published papers:
+
+- non-replicable 
+- non-reproducible 
+- contain serious mistakes
+- claims can't be verified
+- Impossible to build on existing data (meta-analysis)
+
+## Important problems in science today
+
+- Experiments are run without much of a workflow
+- The result is a chaotic research process
+- The resulting errors waste researcher's time and energy
+
+# Experiment design, and planning sample size using simulated data
+
+## Fake-data simulation
+
+```{r}
+
+```
+
+# Defining the analysis plan using simulated data 
+
+# Pre-registering the analysis
+
+# Check that your experiment software actually collects the data you need
+
+# Once data are collected, visualize and summarize the data before doing any analysis
+
+# Create an R package to document and release your data and analyses
+
+# Code refactoring
+
+# Integrating the data analysis into the manuscript
+
+# Releasing data and code: a suggested checklist
+
