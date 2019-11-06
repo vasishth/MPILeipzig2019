@@ -1,0 +1,101 @@
+---
+title: "Title of paper"
+shorttitle        : "Short title"
+author: 
+  - name          : "Your name"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "Human Science Faculty, Department of Linguistics, University of Potsdam, 14476 Potsdam, Germany"
+    email         : "vasishth@uni-potsdam.de"
+  - name          : "Author 2"
+    affiliation   : "2"
+  - name          : "Author 3"
+    affiliation   : "1"
+  - name          : "Author 4"
+    affiliation   : "1"
+  - name          : "Author 5"
+    affiliation   : "1"
+
+affiliation:
+  - id            : "1"
+    institution   : "Department of Linguistics, University of Potsdam"
+  - id            : "2"
+    institution   : "Department of Artificial Intelligence, University of Utrecht"
+
+authornote: |
+
+  Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) – Project number 317633480 – SFB 1287, project Q.
+
+abstract: |
+  abstract here.    
+  
+keywords          : "aphasia, cue-based retrieval, sentence processing, Bayesian cognitive modeling; k-fold cross validation"
+wordcount         : "7000"
+bibliography      : ["examplebibliography.bib"]
+biblio-style      : "apa"
+lang              : "en-EN" 
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no 
+mask              : no
+draft             : no
+documentclass     : "apa6"
+classoption       : "man"  ## doc, jou
+##appendix          : "appendix.Rmd"
+output:
+  papaja::apa6_pdf:
+    citation_package: biblatex
+    latex_engine: xelatex
+biblatexoptions: [date=year,labeldate=year,alldates=year, urldate=short, url=false,eprint=false]     
+header-includes: |
+  \AtEveryBibitem{\clearfield{month}}
+  \AtEveryBibitem{\clearfield{day}}
+  \AtEveryBibitem{\clearfield{url}}
+  \DeclareLanguageMapping{english}{english-apa}
+  \usepackage{gb4e}\noautomath
+  \usepackage{todonotes}
+  \usepackage[utf8]{inputenc}
+  \usepackage{fancyvrb}
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+```
+
+# Introduction
+
+Consider the subject and object relative clauses shown in  (\ref{caplan_ex1}):
+
+\begin{exe}
+\ex \begin{xlist}
+  \ex\label{SR}{\textbf{Subject Relative (SR):} The boy who hugged the girl chased the woman}
+  \ex\label{OR}{\textbf{Object Relative (OR):} The brother who the sister followed kissed the woman}
+  \end{xlist}
+\label{caplan_ex1}
+\end{exe}
+
+@grodner hypothesized that subject relatives are easier to process than object relatives. We revisit their research hypothesis using their data.
+
+\todo[inline]{Load data, preprocess}
+
+\todo[inline]{Carry out analysis}
+
+
+\newpage
+
+
+<!--COMMENT: # References -->
+```{r create_r-references, cache= FALSE}
+# to not overwrite the manual  fixes 
+## r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
+
