@@ -1,7 +1,7 @@
 ---
 title: "Project planning: From design to paper and data release"
 shorttitle: "Project planning"
-author: "Shravan Vasishth"
+author: "Shravan Vasishth/Daniel Schad"
 date: '```r format(Sys.Date(), "%B %d, %Y")```'
 output:
   beamer_presentation:
@@ -16,6 +16,13 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+# Research/teaching interests in my lab
+
+- Experimental psycholinguistics 
+- Computational modeling (sentence processing)
+- Disseminating statistical methods (principally, Bayesian) in psycholinguistics (courses and tutorial articles)
+- Open and transparent science
+
 # Materials from this workshop are available on github
 
 Github source:
@@ -28,11 +35,11 @@ Web page: https://vasishth.github.io/MPILeipzig2019/
 
 ## Important problems in all areas of science
 
-``Findings'' in published papers are often:
+Too often, ``findings'' in published papers are often:
 
 - **non-replicable**
   - Replication attempt of Dillon et al 2013 (JML): https://osf.io/reavs/
-  - Replication attempt of Levy and Keller 2018 (JML): https://osf.io/eyphj/
+  - Replication attempt of Levy and Keller 2013 (JML): https://osf.io/eyphj/
 - **non-reproducible**
   - https://royalsocietypublishing.org/doi/full/10.1098/rsos.180448 
   "*...suboptimal data curation, unclear analysis specification and reporting errors can impede analytic reproducibility, undermining the utility of data sharing and the credibility of scientific findings*."
@@ -63,13 +70,13 @@ Web page: https://vasishth.github.io/MPILeipzig2019/
 
 - The research question is whether object relatives (ORs) are easier to process than subject relatives (SRs), in Mandarin Chinese. 
 
-- In English, SRs are easier to process than ORs:
+- In English, SRs are **easier** to process than ORs:
 
 SR: The senator who interviewed the journalist resigned.
 
 OR: The senator who the journalist interviewed resigned.
 
-- Gibson and Wu 2013, and Hsiao and Gibson 2003, have argued that Chinese shows the opposite pattern. (Some background here: https://tinyurl.com/y69nqnyt).
+- Gibson and Wu 2013, and Hsiao and Gibson 2003, have argued that Chinese shows the opposite pattern (ORs easier). (Some background here: https://tinyurl.com/y69nqnyt).
 
 # Experiment design and planning
 ## Example: Subject and object relatives in Mandarin Chinese
@@ -77,6 +84,7 @@ OR: The senator who the journalist interviewed resigned.
 Existing data on Chinese relative clauses: Gibson and Wu 2013.
 
 ```{r echo=TRUE}
+## load and preprocess data:
 chineseRC<-read.table("data/gibsonwu2012data.txt")
 crit<-subset(chineseRC,region=="headnoun")
 crit$region<-factor(crit$region)
@@ -87,23 +95,31 @@ crit<-crit[,c(1,2,3,7)]
 ## Example: Subject and object relatives in Mandarin Chinese
 
 ```{r echo=TRUE}
+## the data-frame:
 head(crit)
+## slight imbalance in design:
+head(xtabs(~subj+type,crit),n=2)
+## partially crossed, Latin square:
+head(xtabs(~subj+item,crit),n=2)
 ```
 
 # Experiment design and planning
 ## Example: Subject and object relatives in Mandarin Chinese
 
-Existing data on Chinese relative clauses: Gibson and Wu 2013.
-
 ```{r echo=TRUE}
+## sum contrasts:
 crit$so<-ifelse(crit$type=="obj-ext",1,-1)
 library(lme4)
-m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),
+## "maximal" LMM (ignores convergence issues):
+m<-lmer(log(rt)~so+(1+so|subj)+
+          (1+so|item),
         crit,control=lmerControl(calc.derivs=FALSE))
 ```
 
 # Experiment design and planning
 ## Example: Subject and object relatives in Mandarin Chinese
+
+Results:
 
 ```{r eval=FALSE}
 summary(m)
@@ -129,13 +145,15 @@ so           -0.0362     0.0242    -1.5
 # Experiment design and planning
 ## Example: Subject and object relatives in Mandarin Chinese
 
+Generate fake data to compute power:
+
 ```{r echo=TRUE}
 ## load fake data simulation code:
 source("R/gen_fake_lnorm.R")
 ```
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
 
 ```{r echo=TRUE}
@@ -153,7 +171,7 @@ Sigma_u<-SIN::sdcor2cov(stddev=subj_ranefsd,
 ```
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
 ```{r echo=TRUE}
 ## assemble variance covariance matrix for items:
@@ -163,7 +181,7 @@ Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
 ```
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
 ```{r cache=TRUE,echo=TRUE}
 nsim<-100
@@ -181,7 +199,7 @@ tvals[i]<-summary(m)$coefficients[2,3]
 ```
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
 ```{r echo=TRUE}
 ## prospective power for nsubj=40, nitem=16:
@@ -189,7 +207,7 @@ mean(abs(tvals)>2)
 ```
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
 Write a function for computing power:
 
@@ -213,15 +231,43 @@ mean(abs(tvals)>2)
 
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
-- Conclusion: If we were to run a new experiment on Chinese RCs with 40 subjects and 16 items, our prospective power is 30%.
+- Conclusion: If we were to run a new experiment on Chinese RCs with 40 subjects and 16 items, our prospective power is approximately 30%.
 - This assumes that the parameter estimates from the original data are the true values. 
-- However, we are uncertain about the effect estimate (and also the variance components):
+- Note that we are uncertain about the effect estimate (and also the variance components). 
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
+Statistical power depends on
+
+- sample size (subjects and items)
+- standard deviation
+- true effect size
+
+For a full analysis, we should take these uncertainties into account. See appendix in J\"ager et al., 2017 (in the folder readings).
+
+# Experiment design and planning
+## Example: power calculation
+
+How to take uncertainty about the effect into account? An example:
+
+If we have $\pm 1$ sum coding, with OR coded +1 and SR -1, then:
+
+Mean SR processing time (log ms): $\mu_1=\beta_0 - \beta_1$
+
+Mean SR processing time (log ms): $mu_2=\beta_0 + \beta_1$
+
+Since the model is on the log scale, we can go back to the ms scale by exponentiating:
+
+Mean difference in ms in OR vs SR:
+$\exp(\mu_2)-\exp(\mu_1)$
+
+# Experiment design and planning
+## Example: power calculation
+
+Here is the model again:
 
 ```{r echo=TRUE}
 m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),
@@ -229,7 +275,7 @@ m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),
 ```
 
 # Experiment design and planning
-## Example: Subject and object relatives in Mandarin Chinese
+## Example: power calculation
 
 
 ```{r echo=TRUE}
@@ -274,7 +320,7 @@ compute_power(b=-0.06)
 # Experiment design and planning
 ## Example: Subject and object relatives in Mandarin Chinese
 
-We are now in a position to figure out what sample size we need (number of subjects/items) to obtain 80% power or higher.
+We are now in a position to figure out, for a given effect size, what sample size we need (number of subjects/items) to obtain 80% power or higher.
 
 Let's take the minimum effect size to compute a power curve. 
 
@@ -283,7 +329,8 @@ n<-seq(40,300,by=20)
 pow<-rep(NA,length(n))
 for(i in 1:length(n)){
 #print(n[i])  
-pow[i]<-compute_power(b=-0.024,nsubj=n[i])
+pow[i]<-compute_power(b=-0.024,
+                      nsubj=n[i])
 }
 ```
 
@@ -300,16 +347,14 @@ plot(n,pow,
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
 
-What a pre-registration is for (based on Christina Bergmann twitter thread):
+What is a pre-registration for?
 
-<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Others summarised the paper better, so I&#39;ll jump right into my thoughts. I agree with the following: Yes, prereg is not a tool to improve measurement, theory, etc. It&#39;s not even a sign that a specific study was of high quality (that&#39;s why badges can be a problem).</p>&mdash; Dr. Christina Bergmann (@chbergma) <a href="https://twitter.com/chbergma/status/1190538511881003008?ref_src=twsrc%5Etfw">November 2, 2019</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script> 
-
-Also see: https://www.bayesianspectacles.org/a-breakdown-of-preregistration-is-redundant-at-best/
+[See: https://www.bayesianspectacles.org/a-breakdown-of-preregistration-is-redundant-at-best/]
 
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
 
-What a pre-registration is for (based on Christina Bergmann twitter thread):
+What a pre-registration is for (based on a twitter thread by Christina Bergmann):
 
 - It allows the **researcher**, to clearly specify their research hypothesis in advance
 - It creates documentation of the steps to be taken
@@ -320,7 +365,6 @@ What a pre-registration is for (based on Christina Bergmann twitter thread):
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
 
-
 What a pre-registration is **not** for (again echoing Bergmann):
 
 - It doesn't improve theory (the Garbage-in-garbage-out, GIGO, principle)
@@ -330,7 +374,7 @@ What a pre-registration is **not** for (again echoing Bergmann):
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
 
-Confirmatory analysis: Define in advance:
+Confirmatory analysis: Define the following in advance:
 
 - the dependent variable(s) (in eyetracking, we have many choices)
 - the region of interest/time window
@@ -352,7 +396,7 @@ One can also submit one's pre-registration at: aspredicted.org
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
 
-Optionally switch to slides on pre-registration.
+Switch to slides on pre-registration.
 
 # Check that your experiment software actually collects the data you need and back-up your data
 
@@ -373,14 +417,14 @@ p <- ggplot(crit, aes(x=type,
 
 
 
-# Once data are collected, visualize and summarize the data before doing any analysis
+# Once data are collected, visualize the data before doing any analysis
 ## Example: Chinese RCs data
 
-```{r}
+```{r fig.height=5}
 p
 ```
 
-# Once data are collected, visualize and summarize the data before doing any analysis
+# Once data are collected, visualize the data before doing any analysis
 ## Example: Chinese RCs data
 
 ```{r echo=TRUE}
@@ -389,24 +433,24 @@ p2 <- ggplot(crit, aes(x=type,
   facet_wrap( ~ item, nrow=4)
 ```
 
-# Once data are collected, visualize and summarize the data before doing any analysis
+# Once data are collected, visualize the data before doing any analysis
 ## Example: Chinese RCs data
 
-```{r}
+```{r fig.height=5}
 p2
 ```
 
-# Once data are collected, visualize and summarize the data before doing any analysis
+# Once data are collected, visualize the data before doing any analysis
 ## Example: Chinese RCs data
 
 ```{r echo=TRUE}
 p3 <- qplot(crit$type,log(crit$rt),geom="boxplot")
 ```
 
-# Once data are collected, visualize and summarize the data before doing any analysis
+# Once data are collected, visualize  the data before doing any analysis
 ## Example: Chinese RCs data
 
-```{r}
+```{r fig.height=5}
 p3
 ```
 
@@ -437,7 +481,7 @@ After collecting data:
 - never hard-code variables, this will make code non-robust to changes 
   (e.g., don't write ```num_rows<-500```)
 - take the time to document code
-- refactor code
+- refactor code (simplify, write modular code using customized functions)
 
 
 # Integrating the data analysis into the manuscript
@@ -461,8 +505,8 @@ Creating a package:
 
 - DESCRIPTION 
 - R/
-- tests/
 - man/
+- docs/
 - vignettes/
 - data/
 - NAMESPACE
