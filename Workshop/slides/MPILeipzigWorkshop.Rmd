@@ -35,7 +35,7 @@ Web page: https://vasishth.github.io/MPILeipzig2019/
 
 ## Important problems in all areas of science
 
-Too often, ``findings'' in published papers are often:
+Too often, ``findings'' in published papers are:
 
 - **non-replicable**
   - Replication attempt of Dillon et al 2013 (JML): https://osf.io/reavs/
@@ -95,10 +95,16 @@ crit<-crit[,c(1,2,3,7)]
 ## Example: Subject and object relatives in Mandarin Chinese
 
 ```{r echo=TRUE}
-## the data-frame:
+## the data frame:
 head(crit)
 ## slight imbalance in design:
 head(xtabs(~subj+type,crit),n=2)
+```
+
+# Experiment design and planning
+## Example: Subject and object relatives in Mandarin Chinese
+
+```{r echo=TRUE}
 ## partially crossed, Latin square:
 head(xtabs(~subj+item,crit),n=2)
 ```
@@ -140,6 +146,63 @@ Fixed effects:
 (Intercept)   6.0618     0.0657    92.2
 so           -0.0362     0.0242    -1.5
 ```
+
+
+# Experiment design and planning
+## Example: Subject and object relatives in Mandarin Chinese
+
+Underlying model:
+
+
+\begin{equation}
+y_{kj} \sim LogNormal(\alpha + u_{0j} + w_{0k} + (\beta + u_{1j} + w_{1k}) * so_{kj}, \sigma)
+\end{equation}
+
+where we have variance components: $\sigma$ and 
+
+\begin{equation}\label{eq:covmat}
+\Sigma _u
+=
+\begin{pmatrix}
+\sigma _{u0}^2  & \rho _{u}\sigma _{u0}\sigma _{u1}\\
+\rho _{u}\sigma _{u0}\sigma _{u1}    & \sigma _{u1}^2\\
+\end{pmatrix}
+\quad 
+\Sigma _w
+=
+\begin{pmatrix}
+\sigma _{w0}^2  & \rho _{w}\sigma _{w0}\sigma _{w1}\\
+\rho _{w}\sigma _{w0}\sigma _{w1}    & \sigma _{w1}^2\\
+\end{pmatrix}
+\end{equation}
+
+\begin{equation}\label{eq:jointpriordist1}
+\begin{pmatrix}
+  u_0 \\ 
+  u_1 \\
+\end{pmatrix}
+\sim 
+\mathcal{N} \left(
+\begin{pmatrix}
+  0 \\
+  0 \\
+\end{pmatrix},
+\Sigma_{u}
+\right),
+\quad
+\begin{pmatrix}
+  w_0 \\ 
+  w_1 \\
+\end{pmatrix}
+\sim 
+\mathcal{N}\left(
+\begin{pmatrix}
+  0 \\
+  0 \\
+\end{pmatrix},
+\Sigma_{w}
+\right)
+\end{equation}
 
 
 # Experiment design and planning
@@ -243,10 +306,10 @@ mean(abs(tvals)>2)
 Statistical power depends on
 
 - sample size (subjects and items)
-- standard deviation
+- standard deviations (of residual and of random effects)
 - true effect size
 
-For a full analysis, we should take these uncertainties into account. See appendix in J\"ager et al., 2017 (in the folder readings).
+For a full analysis, we should take these uncertainties into account. See appendix in Jäger et al., 2017 (in the folder readings).
 
 # Experiment design and planning
 ## Example: power calculation
@@ -255,11 +318,9 @@ How to take uncertainty about the effect into account? An example:
 
 If we have $\pm 1$ sum coding, with OR coded +1 and SR -1, then:
 
-Mean SR processing time (log ms): $\mu_1=\beta_0 - \beta_1$
-
-Mean SR processing time (log ms): $mu_2=\beta_0 + \beta_1$
-
-Since the model is on the log scale, we can go back to the ms scale by exponentiating:
+- Mean SR processing time (log ms): $\mu_1=\beta_0 - \beta_1$
+- Mean OR processing time (log ms): $\mu_2=\beta_0 + \beta_1$
+- Since the model is on the log scale, we can go back to the ms scale by exponentiating:
 
 Mean difference in ms in OR vs SR:
 $\exp(\mu_2)-\exp(\mu_1)$
@@ -344,6 +405,39 @@ plot(n,pow,
      main="power curve")
 ```
 
+# Exercise
+## Compute power curve as a function of different effect sizes
+
+
+```{r cache=TRUE}
+effect<-seq(0.024,0.06,by=0.001)
+effect<- -effect
+pow<-rep(NA,length(effect))
+for(i in 1:length(effect)){
+#print(n[i])  
+pow[i]<-compute_power(b=effect[i])
+}
+```
+
+# Exercise
+## Compute power curve as a function of different effect sizes
+
+```{r fig.height=5}
+plot(effect,pow,
+     xlab="effect size",
+     ylab="power",type="l",
+     main="power curve")
+```
+
+# Defining the analysis plan using simulated data 
+## Pre-registering the analysis
+
+In 2000, ClinicalTrials.gov made it mandatory to pre-register primary outcomes. 
+
+"17 of 30 studies (57%) published prior to 2000 showed a significant benefit of intervention on the primary outcome in comparison to only 2 among the 25 (8%) trials published after 2000 ($\chi^2$=12.2,df= 1, p=0.0005). **Pre-registration in clinical trials.gov was strongly associated with the trend toward null findings**."
+
+See readings: https://doi.org/10.1371/journal.pone.0132382
+
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
 
@@ -360,7 +454,7 @@ What a pre-registration is for (based on a twitter thread by Christina Bergmann)
 - It creates documentation of the steps to be taken
 - It can improve data management
 - Makes a clear distinction between exploratory and confirmatory analyses
-- Allows for improvements in design before the experiment in run
+- Allows for improvements in design before the experiment is run
 
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
@@ -382,7 +476,9 @@ Confirmatory analysis: Define the following in advance:
 - the statistical model 
 - expected results using fake-data simulation
 
-**None of this prevents you from doing an exploratory analysis**.  See: https://osf.io/mmr7s/, https://psyarxiv.com/2atrh/
+**None of this prevents you from doing an exploratory analysis**.  See: 
+- https://osf.io/mmr7s/ 
+- https://psyarxiv.com/2atrh/
 
 # Defining the analysis plan using simulated data 
 ## Pre-registering the analysis
@@ -411,7 +507,8 @@ Switch to slides on pre-registration.
 ```{r echo=TRUE}
 library(ggplot2)
 p <- ggplot(crit, aes(x=type, 
-                      y=log(rt))) + geom_point(position="jitter")+
+                      y=log(rt))) + 
+  geom_point(position="jitter")+
   facet_wrap( ~ subj, nrow=6)
 ```
 
@@ -455,7 +552,7 @@ p3
 ```
 
 # Integrating the data analysis into the manuscript
-# Workflow checklist
+## Workflow checklist
 
 Before collecting any data:
 
@@ -475,7 +572,7 @@ After collecting data:
 - ideally: the paper itself should be the documentation  (Rmd  or Rnw).
 
 # Integrating the data analysis into the manuscript
-# some high-level coding suggestions
+## some high-level coding suggestions
 
 - write functions for common tasks and figure types
 - never hard-code variables, this will make code non-robust to changes 
