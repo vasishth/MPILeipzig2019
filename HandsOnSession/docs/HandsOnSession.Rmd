@@ -1,0 +1,464 @@
+---
+title             : "Hands-on session: Open research and statistics"
+shorttitle        : "Hands-on session"
+
+author: 
+  - name          : "Shravan Vasishth"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "University of Potsdam"
+    email         : "vasishth@uni-potsdam.de"
+  - name          : "Daniel Schad"
+    affiliation   : "1"
+
+affiliation:
+  - id            : "1"
+    institution   : "University of Potsdam"
+
+authornote: |
+    Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) – Project number 317633480 – SFB 1287, project Q.
+ 
+abstract: |
+  Hands-on session on open research and statistics
+  
+  <!-- https://tinyurl.com/ybremelq -->
+  
+keywords          : "keywords"
+wordcount         : "X"
+
+bibliography      : ["examplebibliography.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+output            : papaja::apa6_pdf
+header-includes: |
+  \usepackage{gb4e}\noautomath
+  \usepackage{todonotes}
+  \usepackage[utf8]{inputenc}
+  \usepackage{fancyvrb}
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+
+# Introduction
+
+Consider the subject and object relative clauses shown in  (\ref{caplan_ex1}):
+
+\begin{exe}
+\ex \begin{xlist}
+  \ex\label{SR}{\textbf{Subject Relative (SR):} The boy who hugged the girl chased the woman}
+  \ex\label{OR}{\textbf{Object Relative (OR):} The brother who the sister followed kissed the woman}
+  \end{xlist}
+\label{caplan_ex1}
+\end{exe}
+
+@grodner hypothesized that subject relatives are easier to process than object relatives. We have their data, so we are going to plan a workflow for data analysis, and for a future study.
+
+This is the data from their Experiment 1.  You can download the paper from [**here**](https://pdfs.semanticscholar.org/98fd/1d9a9191a4e1ae083db538011f333580668b.pdf).
+
+In the @grodner paper, the interest is in the reading time differences between object and subject relatives at the relative clause verb. The expectation from theory is that object relatives (objgap) have longer reading times than subject relatives (subjgap).  The explanation for the longer reading times in objgap vs subjgap lies in working memory constraints (roughly, it is more difficult to figure out who did what to whom in object relatives than subject relatives because in object relatives, one has difficulty in figuring out which of the nouns is the subject of the relative clause verb).
+
+# Load and preprocess data
+
+First, load the data-set provided, and do the preprocessing shown. This gives us the relevant data.
+
+```{r}
+library(dplyr)
+gg05e1 <- read.table("../data/GrodnerGibson2005E1.csv",sep=",", header=T)
+gge1 <- gg05e1 %>% filter(item != 0)
+
+gge1 <- gge1 %>% mutate(word_positionnew = ifelse(item != 15 & word_position > 10,
+                                                  word_position-1, word_position)) 
+#there is a mistake in the coding of word position,
+#all items but 15 have regions 10 and higher coded
+#as words 11 and higher
+
+## get data from relative clause verb:
+gge1crit <- subset(gge1, ( condition == "objgap" & word_position == 6 ) |
+            ( condition == "subjgap" & word_position == 4 ))
+gge1crit<-gge1crit[,c(1,2,3,6)]
+head(gge1crit)
+```
+
+## Check what the data look like
+
+Each of the 42 participants see multiple (eight) instances of subject and object relatives:
+
+```{r}
+xtabs(~subject+condition,
+           gge1crit)
+```
+
+So, from each participant, we have **repeated** measures, which are therefore **not** independent (because they come from the same subject). 
+
+```{r fig.height=8,fig.width=6}
+library(ggplot2)
+p <- ggplot(gge1crit, aes(x=condition, y=log(rawRT))) + geom_point(position="jitter")+
+  facet_wrap( ~ subject, nrow=6)
+p
+```
+
+We can do the same for items:
+
+```{r fig.height=8,fig.width=6}
+library(ggplot2)
+p2 <- ggplot(gge1crit, aes(x=condition, y=log(rawRT))) + geom_point(position="jitter")+
+  facet_wrap( ~ item, nrow=4)
+p2
+```
+
+Boxplots by condition:
+
+```{r fig.height=8,fig.width=6}
+qplot(gge1crit$condition,log(gge1crit$rawRT),geom="boxplot")
+```
+
+There are some unusually long reading times but only in object relatives. Is this meaningful or not? 
+
+# Generating fake data
+
+We will now generate fake data repeatedly resembling Grodner and Gibson's data:
+
+## Step 1: Fit a linear mixed model to the data
+
+See @SchadEtAlcontrasts for a tutorial on contrast coding.
+
+```{r}
+## sum contrast coding, +1 for OR and -1 for SR:
+gge1crit$so<-ifelse(gge1crit$condition=="objgap",1,-1)
+library(lme4)
+m<-lmer(log(rawRT)~so+(1+so|subject) + (1+so|item),gge1crit,control=lmerControl(calc.derivs=FALSE))
+## extract estimates of fixed-effects parameters:
+beta<-summary(m)$coefficients[,1]
+## extract standard deviation estimate:
+sigma_e<-attr(VarCorr(m),"sc")
+## assemble variance covariance matrix for subjects:
+subj_ranefsd<-attr(VarCorr(m)$subj,"stddev")
+subj_ranefcorr<-attr(VarCorr(m)$subj,"corr")
+## choose some intermediate values for correlations:
+corr_matrix<-(diag(2) + matrix(rep(1,4),ncol=2))/2
+Sigma_u<-SIN::sdcor2cov(stddev=subj_ranefsd,
+                        corr=corr_matrix)
+
+## assemble variance covariance matrix for items:
+item_ranefsd<-attr(VarCorr(m)$item,"stddev")
+Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
+                        corr=corr_matrix)
+
+```
+
+## Step 2: Generate fake data using estimates, compute power (and Type I error):
+
+### Calculate power for a future study
+
+```{r cache=TRUE,echo=TRUE}
+source("../R/gen_fake_lnorm.R")
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+fakedat<-gen_fake_lnorm(nitem=16,nsubj=40,
+               alpha=beta[1],beta=beta[2],
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),
+        fakedat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+## bad news:
+mean(abs(tvals)>2)
+```
+
+Write a function for computing power and Type I error (this is an example of code refactoring):
+
+```{r}
+compute_power_type2<-function(nsim=100,b=-0.036,
+                        nsubj=40,nitem=16){
+  tvals<-c()
+for(i in 1:nsim){
+fakedat<-gen_fake_lnorm(nitem=nitem,nsubj=nsubj,
+               alpha=beta[1],beta=b,
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,sigma_e=sigma_e)
+m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),
+        fakedat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+mean(abs(tvals)>2)
+}
+```
+
+
+How many subjects would I need **in a future study** to have approximately 80\% power:
+
+```{r}
+library(MASS)
+compute_power_type2(nsubj=100)
+compute_power_type2(nsubj=200)
+```
+
+### Calculate Type I error (sanity check only)
+
+```{r}
+## null hypothesis is true:
+compute_power_type2(b=0)
+```
+
+### Can we recover parameters under repeated sampling?
+
+This is informative about whether we should even be trying to fit a maximal model given the sample sizes of subjects and items that we plan to have:
+
+```{r}
+nsim<-100
+int<-slope<-stddev<-sigma_u0<-sigma_u1<-sigma_w0<-
+  sigma_w1<-rho_u<-rho_w<-c()
+for(i in 1:nsim){
+fakedat<-gen_fake_lnorm(nitem=16,nsubj=40,
+               alpha=beta[1],beta=beta[2],
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),fakedat,
+        control=lmerControl(calc.derivs=FALSE))
+## extract parameter estimates:
+int[i]<-summary(m)$coefficients[1,1]
+slope[i]<-summary(m)$coefficients[2,1]
+stddev[i]<-summary(m)$sigma
+subj_ranefsd<-attr(VarCorr(m)$subj,"stddev")
+sigma_u0[i]<-subj_ranefsd[1]
+sigma_u1[i]<-subj_ranefsd[2]
+subj_ranefcorr<-attr(VarCorr(m)$subj,"corr")
+rho_u[i]<-subj_ranefcorr[1,2]
+## assemble variance covariance matrix for items:
+item_ranefsd<-attr(VarCorr(m)$item,"stddev")
+sigma_w0[i]<-item_ranefsd[1]
+sigma_w1[i]<-item_ranefsd[2]
+item_ranefcorr<-attr(VarCorr(m)$item,"corr")
+rho_w[i]<-item_ranefcorr[1,2]
+}
+```
+
+One could automate the above steps by writing a function that extracts the parameters.
+
+Check if the repeatedly estimated parameters match the true values used to generate the data:
+
+```{r fig.height=6,fig.width=7}
+op<-par(mfrow=c(3,3),pty="s")
+hist(int,main="")
+abline(v=beta[1],lwd=2)
+hist(slope)
+abline(v=beta[2],lwd=2)
+hist(stddev)
+abline(v=sigma_e,lwd=2)
+hist(sigma_u0,xlim=c(0,0.5))
+abline(v=sqrt(Sigma_u[1,1]),lwd=2)
+hist(sigma_u1,xlim=c(0,0.5))
+abline(v=sqrt(Sigma_u[2,2]),lwd=2)
+hist(sigma_w0)
+abline(v=sqrt(Sigma_w[1,1]),lwd=2)
+hist(sigma_w1)
+abline(v=sqrt(Sigma_w[2,2]),lwd=2)
+hist(rho_u)
+abline(v=0.5,lwd=2)
+hist(rho_w)
+abline(v=0.5,lwd=2)
+```
+
+Notice that the correlation between the item varying intercept and slope, and the correlations, are not recovered accurately by lmer. For the sample size used in @grodner. There wouldn't be much point in fitting a maximal model [@barr2013] here.
+
+Now we can plan our analysis in advance **for this planned sample size**: we can specify the model formula to be:
+
+```
+log(rt)~so+(1+so|subj)+(1+so||item)
+```
+
+This information then goes into a pre-registration.
+
+
+# How to release data and code
+
+The basic principle is always to think about what information the user will  need to reproduce the analyses. This is minimally:
+
+- the data used in the paper
+- the R code that generated all plots and analyses
+- documentation of the experiment design and predictions
+- any additional data and code needed
+
+One simple approach is to 
+
+- create a package
+- put it on osf.io or github or both
+
+I will demonstrate data installation in class.
+
+## Exercise 1
+
+Load the following data and subset the relevant data as shown:
+
+```{r}
+chineseRC<-read.table("../data/gibsonwu2012data.txt",header=TRUE)
+## isolate the critical region:
+crit<-subset(chineseRC,region=="headnoun")
+crit$region<-factor(crit$region)
+crit<-crit[,c(1,2,3,7)]
+head(crit)
+```
+
+Tasks
+
+  - Code the two levels of the two-level factor called type using sum coding ($\pm 1$); call the predictor so, and code obj-ext as +1, subj-ext as -1.
+  - Carry out the above steps, and establish what sample size (number of subjects) you need to detect an effect if the estimate of the effect (the slope of the fixed effect) is significant. All the code is provided above for this, you just need to reuse it, adapting the code as needed.
+
+```{r echo=FALSE}
+crit$so<-ifelse(crit$type=="obj-ext",1,-1)
+m1<-lmer(log(rt)~so+(1+so|subj)+
+           (1+so|item),
+         crit,
+         control=lmerControl(calc.derivs=FALSE))
+summary(m1)
+
+p <- ggplot(crit, aes(x=type, y=log(rt))) + geom_point(position="jitter")+
+  facet_wrap( ~ subj, nrow=6)
+p
+
+
+p2 <- ggplot(crit, aes(x=type, y=log(rt))) + geom_point(position="jitter")+
+  facet_wrap( ~ item, nrow=4)
+p2
+
+qplot(crit$type,log(crit$rt),geom="boxplot")
+
+## power analysis:
+ 
+```
+
+# Exercise 2
+
+This exercise demonstrates why it's important to pre-specify your analysis before you collect your data.
+
+Load the  following data, from Expt 1 of this Frontiers paper: https://www.frontiersin.org/articles/10.3389/fpsyg.2019.02210/full
+
+```{r}
+priming<-read.csv("../data/Frontiers/analysis_script/E1_RTAll.csv",
+                  header=TRUE)
+head(priming)
+
+## Type is subject vs object RC probably, not sure which is which:
+#xtabs(~Sub+Type,priming)
+## ID is the item id:
+#xtabs(~Sub+ID,priming)
+
+## reported subject and item numbers check out:
+length(unique(priming$Sub))
+length(unique(priming$ID))
+
+## some imbalance, probably due to data removal:
+#xtabs(~ID+Type,priming)
+#summary(priming)
+```
+
+Here is the published result: 
+
+"the ORC sentence was found to read significantly faster than the SRC sentence at the head noun region (W4, $\beta$=-0.03, SE=0.01, t=-2.68)
+
+Task for half the class: demonstrate that this claim is false. 
+
+Task for the other half: demonstrate that this claim is true.
+
+```{r echo=FALSE,eval=FALSE}
+## head noun:
+headnoun<-subset(priming,Position==4)
+#summary(headnoun)
+
+headnoun$ID<-factor(headnoun$ID)
+headnoun$Sub<-factor(headnoun$Sub)
+## Type==1 is SR I think:
+headnoun$SO<-ifelse(headnoun$Type==1,-0.5,0.5)
+## a positive slope will mean ORs are harder
+
+## reported model:
+#model1=lmer(RT~Type*Position+(1|Sub)+(1|ID),data=priming)
+#summary(model1)
+
+## some missing data, not serious:
+xtabs(~Sub+ID,headnoun)
+
+xtabs(~Sub+SO,headnoun)
+
+boxplot(RT~Type,headnoun)
+
+## ms:
+1000*with(headnoun,tapply(RT,
+                          Type,mean,
+                          na.rm=TRUE))
+
+## convert to ms:
+headnoun$RT<-headnoun$RT*1000
+
+## claim is reproducible:
+m_hn<-lmer(RT~SO+(1|Sub)+(1|ID),
+           headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
+summary(m_hn)
+
+m_hn0<-lmer(RT~1+(1|Sub)+(1|ID),
+            headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
+
+anova(m_hn0,m_hn)
+
+## claim is false:
+m_hn<-lmer(RT~SO+(1+SO||Sub)+(1+SO||ID),
+           headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
+summary(m_hn)
+
+m_hn0<-lmer(RT~1+(1+SO||Sub)+(1+SO||ID),
+            headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
+
+anova(m_hn0,m_hn)
+
+## on log RT, claim is supported again:
+m_hn<-lmer(log(RT)~SO+(1+SO||Sub)+(1+SO||ID),
+           headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
+summary(m_hn)
+
+m_hn0<-lmer(log(RT)~1+(1+SO||Sub)+(1+SO||ID),
+            headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
+
+anova(m_hn0,m_hn)
+```
+
+The moral here is: it is not at all obvious  which  model should be fit, and what the conclusion should be. Depending on what result you want, you can report either an OR advantage, or a null result. This is a pretty common situation to be in. 
+
+Note also that it is not obvious what would happen with the untrimmed data (in Gibson and Wu 2013 no trimming was done). 
+
+
+
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
