@@ -1,7 +1,7 @@
 ---
 title: "Project planning: From design to paper and data release"
 shorttitle: "Project planning"
-author: "Shravan Vasishth/Daniel Schad"
+author: "Shravan Vasishth"
 date: '```r format(Sys.Date(), "%B %d, %Y")```'
 output:
   beamer_presentation:
