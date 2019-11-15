@@ -53,7 +53,8 @@ library("papaja")
 ```{r analysis-preferences}
 # Seed for random number generation
 set.seed(42)
-knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed,
+                      echo=TRUE)
 ```
 
 
@@ -216,6 +217,8 @@ compute_power_type2(nsubj=200)
 
 ### Calculate Type I error (sanity check only)
 
+By setting the slope to be 0, we are able to compute Type I error:
+
 ```{r}
 ## null hypothesis is true:
 compute_power_type2(b=0)
@@ -323,7 +326,7 @@ head(crit)
 Tasks
 
   - Code the two levels of the two-level factor called type using sum coding ($\pm 1$); call the predictor so, and code obj-ext as +1, subj-ext as -1.
-  - Carry out the above steps, and establish what sample size (number of subjects) you need to detect an effect if the estimate of the effect (the slope of the fixed effect) is significant. All the code is provided above for this, you just need to reuse it, adapting the code as needed.
+  - Carry out the above steps, and establish what sample size (number of subjects) you need to detect an effect, with power 0.80, whether the estimate of the effect (the slope of the fixed effect) is significant. All the code is provided above for this, you just need to reuse it, adapting the code as needed.
 
 ```{r echo=FALSE}
 crit$so<-ifelse(crit$type=="obj-ext",1,-1)
@@ -331,7 +334,7 @@ m1<-lmer(log(rt)~so+(1+so|subj)+
            (1+so|item),
          crit,
          control=lmerControl(calc.derivs=FALSE))
-summary(m1)
+#summary(m1)
 
 p <- ggplot(crit, aes(x=type, y=log(rt))) + geom_point(position="jitter")+
   facet_wrap( ~ subj, nrow=6)
@@ -345,7 +348,24 @@ p2
 qplot(crit$type,log(crit$rt),geom="boxplot")
 
 ## power analysis:
- 
+## extract estimates of fixed-effects parameters:
+beta<-summary(m1)$coefficients[,1]
+## extract standard deviation estimate:
+sigma_e<-attr(VarCorr(m1),"sc")
+## assemble variance covariance matrix for subjects:
+subj_ranefsd<-attr(VarCorr(m1)$subj,"stddev")
+subj_ranefcorr<-attr(VarCorr(m1)$subj,"corr")
+## choose some intermediate values for correlations:
+corr_matrix<-(diag(2) + matrix(rep(1,4),ncol=2))/2
+Sigma_u<-SIN::sdcor2cov(stddev=subj_ranefsd,
+                        corr=corr_matrix)
+
+## assemble variance covariance matrix for items:
+item_ranefsd<-attr(VarCorr(m)$item,"stddev")
+Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
+                        corr=corr_matrix)
+
+#compute_power_type2(nsubj = 200)
 ```
 
 # Exercise 2
@@ -368,6 +388,12 @@ head(priming)
 length(unique(priming$Sub))
 length(unique(priming$ID))
 
+## head noun, critical region:
+headnoun<-subset(priming,Position==4)
+
+## convert to ms:
+headnoun$RT<-headnoun$RT*1000
+
 ## some imbalance, probably due to data removal:
 #xtabs(~ID+Type,priming)
 #summary(priming)
@@ -382,8 +408,6 @@ Task for half the class: demonstrate that this claim is false.
 Task for the other half: demonstrate that this claim is true.
 
 ```{r echo=FALSE,eval=FALSE}
-## head noun:
-headnoun<-subset(priming,Position==4)
 #summary(headnoun)
 
 headnoun$ID<-factor(headnoun$ID)
@@ -404,12 +428,10 @@ xtabs(~Sub+SO,headnoun)
 boxplot(RT~Type,headnoun)
 
 ## ms:
-1000*with(headnoun,tapply(RT,
+with(headnoun,tapply(RT,
                           Type,mean,
                           na.rm=TRUE))
 
-## convert to ms:
-headnoun$RT<-headnoun$RT*1000
 
 ## claim is reproducible:
 m_hn<-lmer(RT~SO+(1|Sub)+(1|ID),
@@ -431,7 +453,7 @@ m_hn0<-lmer(RT~1+(1+SO||Sub)+(1+SO||ID),
 
 anova(m_hn0,m_hn)
 
-## on log RT, claim is supported again:
+## on log RT, claim is supported again!
 m_hn<-lmer(log(RT)~SO+(1+SO||Sub)+(1+SO||ID),
            headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
 summary(m_hn)
@@ -440,11 +462,15 @@ m_hn0<-lmer(log(RT)~1+(1+SO||Sub)+(1+SO||ID),
             headnoun,control = lmerControl(calc.derivs = FALSE),REML=FALSE)
 
 anova(m_hn0,m_hn)
+
+hist(residuals(m_hn))
 ```
 
 The moral here is: it is not at all obvious  which  model should be fit, and what the conclusion should be. Depending on what result you want, you can report either an OR advantage, or a null result. This is a pretty common situation to be in. 
 
 Note also that it is not obvious what would happen with the untrimmed data (in Gibson and Wu 2013 no trimming was done). 
+
+Finally, note that the authors should have checked whether they had sufficient power to detect the effect.
 
 
 
