@@ -194,7 +194,7 @@ mean(abs(tvals)>2)
 Write a function for computing power and Type I error (this is an example of code refactoring):
 
 ```{r cache=TRUE}
-compute_power_type2<-function(nsim=100,b=0.06,
+compute_power_typ1<-function(nsim=100,b=0.06,
                         nsubj=40,nitem=16){
   tvals<-c()
 for(i in 1:nsim){
@@ -215,8 +215,8 @@ How many subjects would I need **in a future study** to have approximately 80\% 
 
 ```{r}
 library(MASS)
-compute_power_type2(nsubj=100)
-compute_power_type2(nsubj=200)
+compute_power_typ1(nsubj=100)
+compute_power_typ1(nsubj=200)
 ```
 
 ### Calculate Type I error (sanity check only)
@@ -225,7 +225,7 @@ By setting the slope to be 0, we are able to compute Type I error:
 
 ```{r}
 ## null hypothesis is true:
-compute_power_type2(b=0)
+compute_power_typ1(b=0)
 ```
 
 ### Can we recover parameters under repeated sampling?
@@ -374,7 +374,7 @@ item_ranefsd<-attr(VarCorr(m)$item,"stddev")
 Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
                         corr=corr_matrix)
 
-#compute_power_type2(nsubj = 200)
+#compute_power_typ1(nsubj = 200)
 ```
 
 ## Exercise 2
