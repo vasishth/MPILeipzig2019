@@ -1,0 +1,251 @@
+---
+title             : "Within vs. between designs: power differences"
+shorttitle        : "Within vs between designs and power"
+
+author: 
+  - name          : "Shravan Vasishth"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "University of Potsdam"
+    email         : "vasishth@uni-potsdam.de"
+
+affiliation:
+  - id            : "1"
+    institution   : "University of Potsdam"
+
+authornote: |
+    Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) – Project number 317633480 – SFB 1287, project Q.
+ 
+abstract: |
+  Does power increase in between vs within subject designs? datacoloda claims yes.
+  
+  <!-- https://tinyurl.com/ybremelq -->
+  
+keywords          : "keywords"
+wordcount         : "X"
+
+bibliography      : ["examplebibliography.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+output            : papaja::apa6_pdf
+header-includes: |
+  \usepackage{gb4e}\noautomath
+  \usepackage{todonotes}
+  \usepackage[utf8]{inputenc}
+  \usepackage{fancyvrb}
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed,
+                      echo=TRUE)
+```
+
+
+# Introduction
+
+Consider the subject and object relative clauses shown in  (\ref{caplan_ex1}):
+
+\begin{exe}
+\ex \begin{xlist}
+  \ex\label{SR}{\textbf{Subject Relative (SR):} The boy who hugged the girl chased the woman}
+  \ex\label{OR}{\textbf{Object Relative (OR):} The brother who the sister followed kissed the woman}
+  \end{xlist}
+\label{caplan_ex1}
+\end{exe}
+
+@grodner hypothesized that subject relatives are easier to process than object relatives. We have their data, so we are going to plan a workflow for data analysis, and for a future study.
+
+This is the data from their Experiment 1.  You can download the paper from [**here**](https://pdfs.semanticscholar.org/98fd/1d9a9191a4e1ae083db538011f333580668b.pdf).
+
+In the @grodner paper, the interest is in the reading time differences between object and subject relatives at the relative clause verb. The expectation from theory is that object relatives (objgap) have longer reading times than subject relatives (subjgap).  The explanation for the longer reading times in objgap vs subjgap lies in working memory constraints (roughly, it is more difficult to figure out who did what to whom in object relatives than subject relatives because in object relatives, one has difficulty in figuring out which of the nouns is the subject of the relative clause verb).
+
+# Load and preprocess data
+
+First, load the data-set provided, and do the preprocessing shown. This gives us the relevant data.
+
+```{r}
+library(dplyr)
+gg05e1 <- read.table("../data/GrodnerGibson2005E1.csv",sep=",", header=T)
+gge1 <- gg05e1 %>% filter(item != 0)
+
+gge1 <- gge1 %>% mutate(word_positionnew = ifelse(item != 15 & word_position > 10,
+                                                  word_position-1, word_position)) 
+#there is a mistake in the coding of word position,
+#all items but 15 have regions 10 and higher coded
+#as words 11 and higher
+
+## get data from relative clause verb:
+gge1crit <- subset(gge1, ( condition == "objgap" & word_position == 6 ) |
+            ( condition == "subjgap" & word_position == 4 ))
+gge1crit<-gge1crit[,c(1,2,3,6)]
+head(gge1crit)
+```
+
+## Check what the data look like
+
+Each of the 42 participants see multiple (eight) instances of subject and object relatives:
+
+```{r}
+xtabs(~subject+condition,
+           gge1crit)
+```
+
+So, from each participant, we have **repeated** measures, which are therefore **not** independent (because they come from the same subject). 
+
+```{r fig.height=8,fig.width=6}
+library(ggplot2)
+p <- ggplot(gge1crit, aes(x=condition, y=log(rawRT))) + geom_point(position="jitter")+
+  facet_wrap( ~ subject, nrow=6)
+p
+```
+
+We can do the same for items:
+
+```{r fig.height=8,fig.width=6}
+library(ggplot2)
+p2 <- ggplot(gge1crit, aes(x=condition, y=log(rawRT))) + geom_point(position="jitter")+
+  facet_wrap( ~ item, nrow=4)
+p2
+```
+
+Boxplots by condition:
+
+```{r fig.height=8,fig.width=6}
+qplot(gge1crit$condition,log(gge1crit$rawRT),geom="boxplot")
+```
+
+There are some unusually long reading times but only in object relatives. Is this meaningful or not? 
+
+# Generating fake data
+
+We will now generate fake data repeatedly resembling Grodner and Gibson's data:
+
+## Step 1: Fit a linear mixed model to the data
+
+
+```{r}
+## sum contrast coding, +1 for OR and -1 for SR:
+gge1crit$so<-ifelse(gge1crit$condition=="objgap",1,-1)
+library(lme4)
+m<-lmer(log(rawRT)~so+(1+so|subject) + (1+so|item),gge1crit,
+        control=lmerControl(calc.derivs=FALSE))
+summary(m)
+## extract estimates of fixed-effects parameters:
+beta<-summary(m)$coefficients[,1]
+## extract standard deviation estimate:
+sigma_e<-attr(VarCorr(m),"sc")
+## assemble variance covariance matrix for subjects:
+subj_ranefsd<-attr(VarCorr(m)$subj,"stddev")
+subj_ranefcorr<-attr(VarCorr(m)$subj,"corr")
+## choose some intermediate values for correlations:
+corr_matrix<-(diag(2) + matrix(rep(1,4),ncol=2))/2
+Sigma_u<-SIN::sdcor2cov(stddev=subj_ranefsd,
+                        corr=corr_matrix)
+
+## assemble variance covariance matrix for items:
+item_ranefsd<-attr(VarCorr(m)$item,"stddev")
+Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
+                        corr=corr_matrix)
+
+```
+
+## Step 2: Generate fake data using estimates
+
+### Calculate power for a future study
+
+We load a function to generate fake data and then compute power:
+
+```{r echo=TRUE}
+source("../R/gen_fake_lnorm.R")
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+fakedat<-gen_fake_lnorm(nitem=8,nsubj=40,
+               alpha=beta[1],beta=beta[2],
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(log(rt)~so+(1+so|subj)+(1+so|item),
+        fakedat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+## this is only valid if the true effect is 0.06 on log ms scale:
+mean(abs(tvals)>2)
+```
+
+## Between subject version
+
+Now, suppose we ran the same study as a between subjects design. 80 subjects total, 40 subjects see one SR item each and 40 see one OR item each.  We need the intercept and slope estimates, and the residual's sd. We can get them from the Grodner and Gibson data.
+
+```{r}
+m<-lmer(log(rawRT)~so+(1+so|subject) + (1+so|item),gge1crit,
+        control=lmerControl(calc.derivs=FALSE))
+summary(m)
+## extract estimates of fixed-effects parameters:
+beta<-summary(m)$coefficients[,1]
+## extract standard deviation estimate:
+sigma_e<-attr(VarCorr(m),"sc")
+```
+
+
+Load a function for generating fake between-subjects data:
+
+```{r}
+source("../R/gen_fake_lnormbetween.R")
+```
+
+Compute power:
+
+```{r}
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+fakedat<-gen_fake_lnormbetween(nitem=1,nsubj=80,
+               alpha=beta[1],beta=beta[2],
+               sigma_e=sigma_e)
+m<-lm(log(rt)~so,
+        fakedat)
+tvals[i]<-summary(m)$coefficients[2,3]
+
+}
+mean(abs(tvals)>2)
+```
+
+This is a between-subjects design:
+```{r}
+## between subjects design:
+xtabs(~so+subj,fakedat)
+```
+
+# Conclusion
+
+For the same number of subjects in each condition as in a within-subjects design,  between subjects designs will lead to lower power here.
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
